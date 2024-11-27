@@ -1,0 +1,9 @@
+<component name="libraryTable">
+  <library name="SysPro.TM.JVM">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/src/libs/SysPro.TM.JVM.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
