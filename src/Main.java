@@ -245,7 +245,7 @@ class LexerImpl implements Lexer {
         String numberStr = input.substring(input.offsetByCodePoints(0, start), input.offsetByCodePoints(0, pos));
         long value = Long.parseLong(numberStr);
 
-        BuiltInType type = BuiltInType.INT32;
+        BuiltInType type = BuiltInType.INT64;
         boolean hasTypeSuffix = false;
 
         if (pos < length && (getCodePointAt(input, pos) == 'i' || getCodePointAt(input, pos) == 'u')) {
@@ -335,7 +335,7 @@ class LexerImpl implements Lexer {
     }
 
     private boolean isSymbol(int codePoint) {
-        return "+-*/%&|^!~<>=()[]{}:".indexOf(codePoint) != -1;
+        return ".:,+-*/%!~&|^<>=()[]?".indexOf(codePoint) != -1;
     }
 
     private Symbol getSymbol(String text) {
