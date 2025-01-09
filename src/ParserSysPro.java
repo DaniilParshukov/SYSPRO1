@@ -7,14 +7,13 @@ import syspro.tm.parser.Parser;
 import java.util.*;
 
 
-import java.util.Collection;
 import java.util.List;
 
 public class ParserSysPro implements Parser {
     private List<Token> tokens;
     private int currentIndex;
-    Collection<TextSpan> ranges;
-    Collection<Diagnostic> diagnostics;
+    List<TextSpan> ranges;
+    List<Diagnostic> diagnostics;
 
     @Override
     public ParseResult parse(String input) {
@@ -24,6 +23,10 @@ public class ParserSysPro implements Parser {
         diagnostics = new ArrayList<>();
 
         SyntaxNode rootNode = parseSourceText();
+
+        /*for (Diagnostic diagnostic : diagnostics) {
+            System.out.println(diagnostic.errorCode().name());
+        }*/
         return new ParseResult() {
             @Override
             public SyntaxNode root() {
@@ -69,7 +72,7 @@ public class ParserSysPro implements Parser {
             identifier = ((IdentifierToken) tokens.get(currentIndex - 1)).withContextualKeyword(null);
         } else {
             ranges.add(tokens.get(currentIndex).span());
-            diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting IDENTIFIER", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+            addDiagnostic(String.format("mismatched input %s expecting IDENTIFIER", tokens.get(currentIndex)), tokens.get(currentIndex).span());
             return null;
         }
 
@@ -85,12 +88,16 @@ public class ParserSysPro implements Parser {
             if (!match(Symbol.GREATER_THAN)) {
                 if (typeArguments.size() > 1) {
                     ranges.add(tokens.get(currentIndex).span());
-                    diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting '>'", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+                    addDiagnostic(String.format("mismatched input %s expecting '>'", tokens.get(currentIndex)), tokens.get(currentIndex).span());
                     return null;
-                } else if (typeArguments.getFirst() == null) {
+                } else if (typeArguments.isEmpty()) {
                     lessThen = null;
+                    if (!ranges.isEmpty()) {
+                        ranges.removeLast();
+                        diagnostics.removeLast();
+                    }
                     currentIndex--;
-                }else {
+                } else {
                     lessThen = null;
                     currentIndex -= typeArguments.getFirst().slotCount() + 1;
                 }
@@ -99,9 +106,19 @@ public class ParserSysPro implements Parser {
         }
 
         if (optional != null) {
-            return createNode(SyntaxKind.OPTION_NAME_EXPRESSION, Arrays.asList(
-                    createTerminalNode(SyntaxKind.IDENTIFIER, optional),
-                    createTerminalNode(SyntaxKind.IDENTIFIER, identifier)));
+            if (lessThen != null) {
+                return createNode(SyntaxKind.OPTION_NAME_EXPRESSION, Arrays.asList(
+                        createTerminalNode(SyntaxKind.IDENTIFIER, optional),
+                        createNode(SyntaxKind.GENERIC_NAME_EXPRESSION, Arrays.asList(
+                                createTerminalNode(SyntaxKind.IDENTIFIER, identifier),
+                                createTerminalNode(SyntaxKind.IDENTIFIER, lessThen),
+                                createNode(SyntaxKind.SEPARATED_LIST, typeArguments),
+                                createTerminalNode(SyntaxKind.IDENTIFIER, greaterThen)))));
+            } else {
+                return createNode(SyntaxKind.OPTION_NAME_EXPRESSION, Arrays.asList(
+                        createTerminalNode(SyntaxKind.IDENTIFIER, optional),
+                        createTerminalNode(SyntaxKind.IDENTIFIER, identifier)));
+            }
         } else if (lessThen != null) {
             return createNode(SyntaxKind.GENERIC_NAME_EXPRESSION, Arrays.asList(
                     createTerminalNode(SyntaxKind.IDENTIFIER, identifier),
@@ -184,7 +201,7 @@ public class ParserSysPro implements Parser {
                 identifier = ((IdentifierToken) tokens.get(currentIndex - 1)).withContextualKeyword(null);
             } else {
                 ranges.add(tokens.get(currentIndex).span());
-                diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting IDENTIFIER", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+                addDiagnostic(String.format("mismatched input %s expecting IDENTIFIER", tokens.get(currentIndex)), tokens.get(currentIndex).span());
                 return null;
             }
 
@@ -217,7 +234,7 @@ public class ParserSysPro implements Parser {
                     memberBlock,
                     memberBlock != null ? createTerminalNode(SyntaxKind.IDENTIFIER, dedent) : null));
         }
-        diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting {'class', 'object', 'interface'}", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+        addDiagnostic(String.format("mismatched input %s expecting {'class', 'object', 'interface'}", tokens.get(currentIndex)), tokens.get(currentIndex).span());
         ranges.add(tokens.get(currentIndex++).span());
         return null;
     }
@@ -227,7 +244,7 @@ public class ParserSysPro implements Parser {
         if (match(Keyword.VAR) || match(Keyword.VAL)) {
             keyword = createTerminalNode(SyntaxKind.IDENTIFIER, tokens.get(currentIndex - 1));
         } else {
-            diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting {'var', 'val'}", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+            addDiagnostic(String.format("mismatched input %s expecting {'var', 'val'}", tokens.get(currentIndex)), tokens.get(currentIndex).span());
             ranges.add(tokens.get(currentIndex).span());
             return null;
         }
@@ -236,7 +253,7 @@ public class ParserSysPro implements Parser {
         if (match(SyntaxKind.IDENTIFIER)) {
             identifier = ((IdentifierToken) tokens.get(currentIndex - 1)).withContextualKeyword(null);
         } else {
-            diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting IDENTIFIER", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+            addDiagnostic(String.format("mismatched input %s expecting IDENTIFIER", tokens.get(currentIndex)), tokens.get(currentIndex).span());
             ranges.add(tokens.get(currentIndex).span());
             return null;
         }
@@ -265,7 +282,7 @@ public class ParserSysPro implements Parser {
         }
 
         if (!match(Keyword.DEF)) {
-            diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting 'def'", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+            addDiagnostic(String.format("mismatched input %s expecting 'def'", tokens.get(currentIndex)), tokens.get(currentIndex).span());
             ranges.add(tokens.get(currentIndex++).span());
             return null;
         }
@@ -279,14 +296,14 @@ public class ParserSysPro implements Parser {
             if (match(SyntaxKind.IDENTIFIER)) {
                 identifier = ((IdentifierToken) tokens.get(currentIndex - 1)).withContextualKeyword(null);
             } else {
-                diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting IDENTIFIER", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+                addDiagnostic(String.format("mismatched input %s expecting IDENTIFIER", tokens.get(currentIndex)), tokens.get(currentIndex).span());
                 ranges.add(tokens.get(currentIndex).span());
                 return null;
             }
         }
 
         if (!match(Symbol.OPEN_PAREN)) {
-            diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting '('", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+            addDiagnostic(String.format("mismatched input %s expecting '('", tokens.get(currentIndex)), tokens.get(currentIndex).span());
             ranges.add(tokens.get(currentIndex).span());
             return null;
         }
@@ -305,7 +322,7 @@ public class ParserSysPro implements Parser {
                 }
             }
             if (!match(Symbol.CLOSE_PAREN)) {
-                diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting ')'", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+                addDiagnostic(String.format("mismatched input %s expecting ')'", tokens.get(currentIndex)), tokens.get(currentIndex).span());
                 ranges.add(tokens.get(currentIndex).span());
                 return null;
             }
@@ -363,7 +380,7 @@ public class ParserSysPro implements Parser {
         if (match(SyntaxKind.IDENTIFIER)) {
             identifier = ((IdentifierToken) tokens.get(currentIndex - 1)).withContextualKeyword(null);
         } else {
-            diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting IDENTIFIER", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+            addDiagnostic(String.format("mismatched input %s expecting IDENTIFIER", tokens.get(currentIndex)), tokens.get(currentIndex).span());
             ranges.add(tokens.get(currentIndex).span());
             return null;
         }
@@ -382,12 +399,12 @@ public class ParserSysPro implements Parser {
         if (match(SyntaxKind.IDENTIFIER)) {
             identifier = ((IdentifierToken) tokens.get(currentIndex - 1)).withContextualKeyword(null);
         } else {
-            diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting IDENTIFIER", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+            addDiagnostic(String.format("mismatched input %s expecting IDENTIFIER", tokens.get(currentIndex)), tokens.get(currentIndex).span());
             ranges.add(tokens.get(currentIndex).span());
             return null;
         }
         if (!match(Symbol.COLON)) {
-            diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting ':'", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+            addDiagnostic(String.format("mismatched input %s expecting ':'", tokens.get(currentIndex)), tokens.get(currentIndex).span());
             ranges.add(tokens.get(currentIndex).span());
             return null;
         }
@@ -499,7 +516,7 @@ public class ParserSysPro implements Parser {
         Token forToken = tokens.get(currentIndex - 1);
         SyntaxNode primary = parsePrimary();
         if (!match(Keyword.IN)) {
-            diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting 'in'", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+            addDiagnostic(String.format("mismatched input %s expecting 'in'", tokens.get(currentIndex)), tokens.get(currentIndex).span());
             ranges.add(tokens.get(currentIndex).span());
             return null;
         }
@@ -535,7 +552,7 @@ public class ParserSysPro implements Parser {
                 if (match(SyntaxKind.IDENTIFIER)) {
                     identifier = ((IdentifierToken) tokens.get(currentIndex - 1)).withContextualKeyword(null);
                 } else {
-                    diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting IDENTIFIER", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+                    addDiagnostic(String.format("mismatched input %s expecting IDENTIFIER", tokens.get(currentIndex)), tokens.get(currentIndex).span());
                     ranges.add(tokens.get(currentIndex).span());
                     return null;
                 }
@@ -557,7 +574,7 @@ public class ParserSysPro implements Parser {
                         }
                     }
                     if (!match(Symbol.CLOSE_PAREN)) {
-                        diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting ')'", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+                        addDiagnostic(String.format("mismatched input %s expecting ')'", tokens.get(currentIndex)), tokens.get(currentIndex).span());
                         ranges.add(tokens.get(currentIndex).span());
                         return null;
                     }
@@ -573,7 +590,7 @@ public class ParserSysPro implements Parser {
                 Token open = tokens.get(currentIndex - 1);
                 SyntaxNode indexExpression = parseExpression();
                 if (!match(Symbol.CLOSE_BRACKET)) {
-                    diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting ']'", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
+                    addDiagnostic(String.format("mismatched input %s expecting ']'", tokens.get(currentIndex)), tokens.get(currentIndex).span());
                     ranges.add(tokens.get(currentIndex).span());
                     return null;
                 }
@@ -609,11 +626,14 @@ public class ParserSysPro implements Parser {
             return createNode(SyntaxKind.RUNE_LITERAL_EXPRESSION, List.of(createTerminalNode(SyntaxKind.RUNE, tokens.get(currentIndex - 1))));
         } else if (match(Symbol.OPEN_PAREN)) {
             Token open = tokens.get(currentIndex - 1);
-            SyntaxNode expression = parseExpression();
+            SyntaxNode expression = null;
             if (!match(Symbol.CLOSE_PAREN)) {
-                diagnostics.add(new Diagnostic(new DiagnosticInfo(()->String.format("mismatched input %s expecting ')'", tokens.get(currentIndex)), null), tokens.get(currentIndex).span(), null));
-                ranges.add(tokens.get(currentIndex).span());
-                return null;
+                expression = parseExpression();
+                if (!match(Symbol.CLOSE_PAREN)) {
+                    addDiagnostic(String.format("mismatched input %s expecting ')'", tokens.get(currentIndex)), tokens.get(currentIndex).span());
+                    ranges.add(tokens.get(currentIndex).span());
+                    return null;
+                }
             }
             Token close = tokens.get(currentIndex - 1);
             return createNode(SyntaxKind.PARENTHESIZED_EXPRESSION, Arrays.asList(
@@ -722,6 +742,13 @@ public class ParserSysPro implements Parser {
             Token currentToken = tokens.get(currentIndex);
             if (currentToken instanceof SymbolToken symbolToken) {
                 if (symbolToken.symbol == symbol) {
+                    currentIndex++;
+                    return true;
+                } else if (symbolToken.symbol == Symbol.GREATER_THAN_GREATER_THAN && symbol == Symbol.GREATER_THAN) {
+                    Token token = tokens.get(currentIndex);
+                    tokens.remove(currentIndex);
+                    tokens.add(currentIndex, token.withLeadingTriviaLength(0).withStart(token.span().start() + 1));
+                    tokens.add(currentIndex, token.withTrailingTriviaLength(0).withEnd(token.span().end() - 1));
                     currentIndex++;
                     return true;
                 }
@@ -855,5 +882,10 @@ public class ParserSysPro implements Parser {
             case DOT, COLON, COMMA, EXCLAMATION, TILDE, OPEN_BRACKET, CLOSE_BRACKET, OPEN_PAREN, CLOSE_PAREN, EQUALS, QUESTION, BOUND -> SyntaxKind.BAD;
         };
         return createNode(kind, Arrays.asList(left, createTerminalNode(SyntaxKind.IDENTIFIER, operatorToken), right));
+    }
+
+    private void addDiagnostic(String message, TextSpan span) {
+        Diagnostic diagnostic = new Diagnostic(new DiagnosticInfo(() -> message, null), span, null);
+        diagnostics.add(diagnostic);
     }
 }
