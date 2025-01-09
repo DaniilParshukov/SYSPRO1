@@ -24,9 +24,6 @@ public class ParserSysPro implements Parser {
 
         SyntaxNode rootNode = parseSourceText();
 
-        for (Diagnostic diagnostic : diagnostics) {
-            System.out.println(diagnostic.errorCode().name());
-        }
         return new ParseResult() {
             @Override
             public SyntaxNode root() {
