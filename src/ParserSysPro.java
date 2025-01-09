@@ -747,7 +747,7 @@ public class ParserSysPro implements Parser {
                 } else if (symbolToken.symbol == Symbol.GREATER_THAN_GREATER_THAN && symbol == Symbol.GREATER_THAN) {
                     tokens.remove(currentIndex);
                     tokens.add(currentIndex, new SymbolToken(token.span().start() + 1, token.end, 0, token.trailingTriviaLength, Symbol.GREATER_THAN));
-                    tokens.add(currentIndex, new SymbolToken(token.start, token.span().end() - 1, token.leadingTriviaLength, 0, Symbol.GREATER_THAN));
+                    tokens.add(currentIndex, new SymbolToken(token.start, token.span().start(), token.leadingTriviaLength, 0, Symbol.GREATER_THAN));
                     currentIndex++;
                     return true;
                 }
