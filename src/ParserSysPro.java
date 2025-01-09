@@ -24,9 +24,9 @@ public class ParserSysPro implements Parser {
 
         SyntaxNode rootNode = parseSourceText();
 
-        /*for (Diagnostic diagnostic : diagnostics) {
+        for (Diagnostic diagnostic : diagnostics) {
             System.out.println(diagnostic.errorCode().name());
-        }*/
+        }
         return new ParseResult() {
             @Override
             public SyntaxNode root() {
@@ -739,16 +739,15 @@ public class ParserSysPro implements Parser {
 
     private boolean match(Symbol symbol) {
         if (isNotEnd()) {
-            Token currentToken = tokens.get(currentIndex);
-            if (currentToken instanceof SymbolToken symbolToken) {
+            Token token = tokens.get(currentIndex);
+            if (token instanceof SymbolToken symbolToken) {
                 if (symbolToken.symbol == symbol) {
                     currentIndex++;
                     return true;
                 } else if (symbolToken.symbol == Symbol.GREATER_THAN_GREATER_THAN && symbol == Symbol.GREATER_THAN) {
-                    Token token = tokens.get(currentIndex);
                     tokens.remove(currentIndex);
-                    tokens.add(currentIndex, token.withLeadingTriviaLength(0).withStart(token.span().start() + 1));
-                    tokens.add(currentIndex, token.withTrailingTriviaLength(0).withEnd(token.span().end() - 1));
+                    tokens.add(currentIndex, new SymbolToken(token.span().start() + 1, token.end, 0, token.trailingTriviaLength, Symbol.GREATER_THAN));
+                    tokens.add(currentIndex, new SymbolToken(token.start, token.span().end() - 1, token.leadingTriviaLength, 0, Symbol.GREATER_THAN));
                     currentIndex++;
                     return true;
                 }

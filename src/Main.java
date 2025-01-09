@@ -10,21 +10,14 @@ public class Main {
         //WebServer.waitForWebServerExit();
 
         /*(new ParserSysPro()).parse("""
-                class Bitwise
-                    def shiftRight(value: Int64, positions: Int64): Int64
-                        return value >> positions
-                    def shiftLeft(value: Int64, positions: Int64): Int64
-                        return value << positions
-                    def compareValues(a: Int64, b: UInt64): Boolean
-                        return a < b
-                    def bad(a, b)
-                        foo(a >> > b)
-                    def foo(a: Int64)
-                        val res = ArrayList<ArrayList<Int64>>()
-                        if a < 128u32
-                            return a < 128
-                        else
-                            return a << 128""");
-         */
+                class ShiftsX
+                  def foo(x: ArrayList<Int64>): Iterable<ArrayList<Int64>>
+                    x.add(2 >> 1)
+                    x.add(42 > > 2)
+                    val res = ArrayList<ArrayList<Int64>>()
+                    res.add(x)
+                    return res
+                """);
+        */
     }
 }
